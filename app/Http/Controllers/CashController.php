@@ -14,48 +14,7 @@ class CashController extends Controller
 
     public function loadCash()
     {
-        $example = array(
-            array(
-                'quantity' => 10,
-                'value' => 50
-            ),
-            array(
-                'quantity' => 10,
-                'value' => 200
-            ),
-            array(
-                'quantity' => 10,
-                'value' => 500
-            ),
-            array(
-                'quantity' => 10,
-                'value' => 1000
-            ),
-            array(
-                'quantity' => 5,
-                'value' => 2000
-            ),
-            array(
-                'quantity' => 5,
-                'value' => 5000
-            ),
-            array(
-                'quantity' => 5,
-                'value' => 10000
-            ),
-            array(
-                'quantity' => 3,
-                'value' => 20000
-            ),
-            array(
-                'quantity' => 4,
-                'value' => 50000
-            ),
-
-        );
-
-        $this->load($example);
-
+        $this->load(request()->all());
         return response('load success');
     }
 
@@ -71,16 +30,7 @@ class CashController extends Controller
     //Pagos
     public function pay()
     {
-        $example = array(
-            'value' => 187600,
-            'currencies' => array(
-                array(
-                    'quantity' => 3,
-                    'value' => 100000
-                ),
-
-            )
-        );
+        $example = request()->all();
 
         //validar que lo los valores de currency sean >= que value (valor a pagar)
         $sum = 0;
@@ -89,7 +39,7 @@ class CashController extends Controller
         }
 
         if ($sum < $example['value']) {
-            return response('te falta billete ' . ($example['value'] - $sum));
+            return response('Te falta dinero ' . ($example['value'] - $sum));
         }
 
         //validamos que tengamos que dar vueltos
@@ -97,27 +47,35 @@ class CashController extends Controller
 
         if ($totalDevolver > 0) {
 
-            $caja = DB::table('cash')->join('denominations', 'denominations.id', '=', 'cash.denomination_id')
+            $cash = DB::table('cash')->join('denominations', 'denominations.id', '=', 'cash.denomination_id')
                 ->where('cash.quantity', '>=', 1)
                 ->where('denominations.value', '<=', $totalDevolver)
                 ->orderBy('denominations.value', 'DESC')
                 ->select('denominations.value', 'cash.quantity')
                 ->get();
 
-            $m =  $this->payRecursivo($caja, $totalDevolver, []);
+            $m =  $this->payRecursivo($cash, $totalDevolver, []);
             $sum = $this->addChange($m);
 
-            if ($sum < $totalDevolver) {
-
-                return response('No hay para devolver $' . ($totalDevolver - $sum) . ' de vuelto');
+            if(count($cash)){
+                
+                if ($sum < $totalDevolver) {
+    
+                    return response('No hay para devolver $' . ($totalDevolver - $sum) . ' de vuelto');
+    
+                } else {
+    
+                    //registrar la salida o entrega del cambio.
+                    $this->returnChange($m);
+    
+                    //Registrar pago
+                    $this->payRegister($example);
+                }
             } else {
 
-                //registrar la salida o entrega del cambio.
-                $this->returnChange($m);
-
-                //Registrar pago
-                $this->payRegister($example);
+                return response('No hay dinero en la caja');
             }
+
         }
 
         return response()->json(['vuelto' => $totalDevolver, 'denominaciones' => $m]);

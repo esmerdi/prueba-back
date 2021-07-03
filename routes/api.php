@@ -18,9 +18,9 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::get('cargar-caja', 'CashController@loadCash');
+Route::post('cargar-caja', 'CashController@loadCash');
 Route::get('vaciar-caja', 'CashController@emptyCash');
 Route::get('estado-caja', 'CashController@cashState');
 Route::get('movimientos', 'CashController@moves');
-Route::get('pago', 'CashController@pay');
+Route::post('pago', 'CashController@pay');
 Route::get('estado-caja-fecha', 'CashController@cashStateByDate');
